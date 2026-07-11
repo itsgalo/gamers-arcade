@@ -77,7 +77,7 @@ const app = express();
 app.use(express.json());
 
 app.use(cors({
-  origin: "https://generator.staging.artblocks.io/",
+  origin: "https://generator.staging.artblocks.io",
   credentials: true
 }));
 
@@ -97,6 +97,7 @@ app.use(session({
 // Serve the frontend from ./public
 app.use(express.static('public'));
 
+app.set('trust proxy', 1);
 
 // ---------------------------------------------------------------
 // AUTH
