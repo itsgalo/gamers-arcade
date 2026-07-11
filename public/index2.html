@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>arcade test</title>
+  <!-- ethers is only used for one thing: checksumming the address (SIWE requires it) -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.0/dist/ethers.umd.min.js"></script>
+  <style>
+    body { font-family: monospace; max-width: 600px; margin: 40px auto; }
+    button { margin: 4px 0; display: block; }
+    input { width: 200px; }
+    #log { white-space: pre-wrap; background: #f0f0f0; padding: 10px; margin-top: 16px; }
+    .ok { color: green; } .bad { color: red; }
+  </style>
+</head>
+<body>
+  <h3>arcade backend test</h3>
+
+  <div>wallet: <span id="walletStatus" class="bad">not connected</span></div>
+  <div>session: <span id="sessionStatus" class="bad">not signed in</span></div>
+  <div>score: <span id="scoreDisplay">–</span></div>
+
+  <hr>
+
+  <button id="connectBtn">1. connect wallet</button>
+
+  <label>tokenId: <input id="tokenInput" placeholder="e.g. 341000000"></label>
+  <button id="signInBtn">2. sign in (SIWE + ownership check)</button>
+
+  <button id="startBtn">3. start game</button>
+  <button id="scoreBtn">4. generate random score + submit</button>
+  <button id="lbBtn">5. fetch leaderboard</button>
+
+  <div id="log"></div>
+
+<script>
+let address = null;
+
+const $ = id => document.getElementById(id);
+const log = msg => { $('log').textContent += msg + '\n'; };
+
+// ---- 1. connect ----
+$('connectBtn').onclick = async () => {
+  if (!window.ethereum) return log('no wallet found — is MetaMask installed?');
+  const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+  address = ethers.getAddress(accounts[0]); // checksummed — SIWE requires this form
+  $('walletStatus').textContent = address;
+  $('walletStatus').className = 'ok';
+  log('connected: ' + address);
+};
+
+// ---- 2. sign in ----
+$('signInBtn').onclick = async () => {
+  if (!address) return log('connect wallet first');
+  const tokenId = $('tokenInput').value.trim();
+  if (!tokenId) return log('enter a tokenId');
+
+  // get a nonce from the server
+  const { nonce } = await (await fetch('/auth/nonce')).json();
+  log('got nonce: ' + nonce);
+
+  // build the SIWE message by hand (EIP-4361 plain-text format).
+  // The exact line structure matters — the server parses this.
+  const message =
+`${location.host} wants you to sign in with your Ethereum account:
+${address}
+
+Sign in to the arcade.
+
+URI: ${location.origin}
+Version: 1
+Chain ID: 1
+Nonce: ${nonce}
+Issued At: ${new Date().toISOString()}`;
+
+  const signature = await window.ethereum.request({
+    method: 'personal_sign',
+    params: [message, address]
+  });
+  log('signed.');
+
+  const res = await fetch('/auth/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, signature, tokenId })
+  });
+  const body = await res.json();
+  if (res.ok) {
+    $('sessionStatus').textContent = 'signed in as ' + body.address;
+    $('sessionStatus').className = 'ok';
+    log('verify OK');
+    start();
+  } else {
+    log('verify FAILED: ' + body.error);
+  }
+};
+
+// ---- 3. start game ----
+//$('startBtn').onclick = async () => 
+async function start() {
+  const res = await fetch('/game/start', { method: 'POST' });
+  const body = await res.json();
+  log(res.ok ? 'game started (server is timing you)' : 'start failed: ' + body.error);
+};
+
+// ---- 4. random score + submit ----
+$('scoreBtn').onclick = async () => {
+  const score = Math.floor(Math.random() * 10000);
+  $('scoreDisplay').textContent = score;
+  const res = await fetch('/game/score', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ score })
+  });
+  const body = await res.json();
+  log(res.ok ? 'score ' + score + ' accepted' : 'score rejected: ' + body.error);
+};
+
+// ---- 5. leaderboard ----
+$('lbBtn').onclick = async () => {
+  const rows = await (await fetch('/leaderboard')).json();
+  log('leaderboard:\n' + JSON.stringify(rows, null, 2));
+};
+</script>
+</body>
+</html>
