@@ -76,8 +76,23 @@ db.exec(`
 const app = express();
 app.use(express.json());
 
+const allowedOrigins = [
+  "https://generator.staging.artblocks.io",
+  "https://generator.artblocks.io",
+  "http://localhost:3000"
+];
+
 app.use(cors({
-  origin: "https://generator.staging.artblocks.io",
+  origin: function (origin, callback) {
+    // allow requests with no origin (like curl, Postman, server-to-server)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true
 }));
 
