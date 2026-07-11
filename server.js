@@ -13,6 +13,7 @@
 //   GET  /leaderboard  -> top scores (public)
 
 require('dotenv').config();
+const cors = require('cors');
 const express = require('express');
 const session = require('express-session');
 const Database = require('better-sqlite3');
@@ -75,16 +76,27 @@ db.exec(`
 const app = express();
 app.use(express.json());
 
+app.use(cors({
+  origin: "https://generator.staging.artblocks.io/",
+  credentials: true
+}));
+
 // Sessions: browser holds an opaque cookie; the real data lives server-side.
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: 'lax' } // add secure:true once behind https
+  cookie: {
+    httpOnly: true,
+    //sameSite: 'lax'
+    sameSite: "none",
+    secure: true
+  } // add secure:true once behind https
 }));
 
 // Serve the frontend from ./public
 app.use(express.static('public'));
+
 
 // ---------------------------------------------------------------
 // AUTH
