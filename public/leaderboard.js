@@ -10,7 +10,7 @@ import { Flap } from './flap.js';
 // '' if this page is served from the game server's ./public folder.
 // Otherwise the full origin, e.g. 'https://game.yourdomain.com'
 // (and that page's origin must be in the server's allowedOrigins).
-const API_BASE = '';
+const API_BASE = 'https://gamers-arcade-production.up.railway.app';
 const REFRESH_MS = 30000;
 const MAX_ROWS = 10;
 
@@ -105,7 +105,7 @@ class LeaderboardSite {
     hud.text(hud.fromRight(coords.length + 3), hud.fromBottom(1), coords, dim, true);
 
     // Title
-    const title = 'HIGH SCORES';
+    const title = 'GAMERS LEADERBOARD';
     hud.text(hud.cx - Math.floor(title.length / 2), 3, title, accent, false);
     const subtitle = '[ TOP PLAYERS — ALL TIME ]';
     hud.text(hud.cx - Math.floor(subtitle.length / 2), 5, subtitle, dim, false);

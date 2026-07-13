@@ -77,6 +77,7 @@ const app = express();
 app.use(express.json());
 
 const allowedOrigins = [
+  "https://gamers-arcade-production.up.railway.app",
   "https://generator.staging.artblocks.io",
   "https://generator.artblocks.io",
   "http://localhost:3000"
