@@ -12,7 +12,7 @@ import { Flap } from './flap.js';
 // (and that page's origin must be in the server's allowedOrigins).
 const API_BASE = 'https://gamers-arcade-production.up.railway.app';
 const REFRESH_MS = 30000;
-const MAX_ROWS = 10;
+const MAX_ROWS = 18;
 
 class LeaderboardSite {
   constructor() {
@@ -33,7 +33,19 @@ class LeaderboardSite {
     this.init();
     this.animate();
     this.loadScores();
+    this.offset = 0;
+    //this.populateDummy(1000);
     setInterval(() => this.loadScores(), REFRESH_MS);
+  }
+
+  populateDummy(n) {
+    this.scores = Array.from({ length: n }, () => ({
+      address: '0x' + '0'.repeat(40),
+      tokenId: 422000000 + Math.floor(Math.random() * 10000),
+      best: 0
+    }));
+    this.error = false;
+    this.render();
   }
 
   init() {
@@ -129,12 +141,26 @@ class LeaderboardSite {
       hud.text(innerX, boxY + 3, 'NO SCORES RECORDED YET', dim, false);
     } else {
       // Column header + rule
-      hud.text(innerX, boxY + 2, 'RK  TOKEN       OWNER', dim, false);
+      hud.text(innerX, boxY + 2, 'RANK  TOKEN       OWNER', dim, false);
       hud.text(innerX + innerW - 5, boxY + 2, 'SCORE', dim, false);
       hud.text(innerX, boxY + 3, '─'.repeat(innerW), dim, true);
 
-      this.scores.slice(0, MAX_ROWS).forEach((row, i) => {
-        const rank = String(i + 1).padStart(2, '0');
+      // this.scores.slice(0, MAX_ROWS).forEach((row, i) => {
+      //   const rank = String(i + 1).padStart(2, '0');
+      //   const token = ('#' + row.tokenId).padEnd(11).slice(0, 11);
+      //   const owner = (row.address.slice(0, 6) + '..' + row.address.slice(-4)).toUpperCase();
+      //   const score = String(row.best);
+
+      //   const left = `${rank}  ${token} ${owner}`;
+      //   const dots = '.'.repeat(Math.max(1, innerW - left.length - score.length - 2));
+      //   const line = `${left} ${dots} ${score}`;
+
+      //   const color = i === 0 ? accent : green;
+      //   hud.text(innerX, boxY + 5 + i * 2, line, color, false);
+      // });
+      const page = this.scores.slice(this.offset, this.offset + MAX_ROWS);
+      page.forEach((row, i) => {
+        const rank = String(this.offset + i + 1).padStart(4, '0');
         const token = ('#' + row.tokenId).padEnd(11).slice(0, 11);
         const owner = (row.address.slice(0, 6) + '..' + row.address.slice(-4)).toUpperCase();
         const score = String(row.best);
@@ -143,9 +169,19 @@ class LeaderboardSite {
         const dots = '.'.repeat(Math.max(1, innerW - left.length - score.length - 2));
         const line = `${left} ${dots} ${score}`;
 
-        const color = i === 0 ? accent : green;
-        hud.text(innerX, boxY + 5 + i * 2, line, color, false);
+        const color = this.offset + i === 0 ? accent : green;
+        hud.text(innerX, boxY + 5 + i, line, color, false);
       });
+
+      // Pager
+      const totalPages = Math.max(1, Math.ceil(this.scores.length / MAX_ROWS));
+      const pageNum = Math.floor(this.offset / MAX_ROWS);
+      const label = `PAGE ${String(pageNum + 1).padStart(2, '0')}/${totalPages}`;
+      hud.text(innerX + Math.floor((innerW - label.length) / 2), boxY + boxH - 2, label, dim, false);
+      if (pageNum > 0)
+        hud.text(innerX, boxY + boxH - 2, '< PREV', green, false, { interactive: true, link: 'PREV' });
+      if (pageNum < totalPages - 1)
+        hud.text(innerX + innerW - 6, boxY + boxH - 2, 'NEXT >', green, false, { interactive: true, link: 'NEXT' });
     }
 
     // Arcade flourish
@@ -173,6 +209,7 @@ class LeaderboardSite {
         if (r > 0.9 && g < 0.5) cell.el.classList.add('accent');
         else if (r < 0.4 && g < 0.4) cell.el.classList.add('dim');
         if (inst.blink) cell.el.classList.add('blink');
+        if (inst.interactive) cell.el.classList.add('interactive');
       }
 
       // Skip cells that already show the right character (avoids a full
@@ -210,6 +247,16 @@ class LeaderboardSite {
           }
         }
       }
+    });
+    this.container.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('interactive')) return;
+      const col = parseInt(e.target.dataset.col);
+      const row = parseInt(e.target.dataset.row);
+      const inst = this.layout.instances.find(i => i.col === col && i.row === row && i.link);
+      if (!inst) return;
+      if (inst.link === 'NEXT') this.offset += MAX_ROWS;
+      if (inst.link === 'PREV') this.offset = Math.max(0, this.offset - MAX_ROWS);
+      this.render();
     });
   }
 

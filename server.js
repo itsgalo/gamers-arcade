@@ -201,7 +201,7 @@ app.get('/leaderboard', (req, res) => {
     FROM scores
     GROUP BY address
     ORDER BY best DESC
-    LIMIT 25
+    LIMIT 2000
   `).all();
   res.json(rows);
 });
